@@ -1,0 +1,7 @@
+/.github/ @rbxinfra/platform-ci
+
+CODEOWNERS @rbxinfra/micro-services-platform
+
+/libs/ @rbxinfra/micro-services-platform
+/services/ @rbxinfra/micro-services-platform
+/tests/ @rbxinfra/micro-services-platform
