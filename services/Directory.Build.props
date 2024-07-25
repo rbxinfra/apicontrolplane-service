@@ -3,6 +3,7 @@
 		<NoWarn>$(NoWarn);4014</NoWarn>
 	</PropertyGroup>
 
+
 	<PropertyGroup Label="LibStandard">
 		<TargetFramework>net8.0</TargetFramework>
 		<LangVersion>preview</LangVersion>
