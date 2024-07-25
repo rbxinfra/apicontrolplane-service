@@ -34,8 +34,7 @@ deployment:
         ram: ${{ env.NOMAD_RAM }}
       network:
         ports:
-          http:
-            to: 5000
+          http: {}
       services:
         - name: ${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-http
           port: http
@@ -73,6 +72,7 @@ deployment:
           env: true
           on_change: restart
           data: |
+            ASPNETCORE_URLS="http://+:{{ env "NOMAD_PORT_http" }}"
             AppName=Roblox.ApiControlPlane.ApiControlPlaneService
             DEFAULT_LOG_LEVEL=Information
             VAULT_ADDR="http://vault.service.consul:8200"
