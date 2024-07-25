@@ -17,5 +17,6 @@
 		<Copyright>Copyright © $(Company) $([System.DateTime]::Now.ToString(`yyyy`)). All rights reserved.</Copyright>
 		<Authors>$(Company)</Authors>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<Version>1.0.0</Version>
 	</PropertyGroup>
 </Project>
