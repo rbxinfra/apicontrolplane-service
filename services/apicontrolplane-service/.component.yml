@@ -34,7 +34,8 @@ deployment:
         ram: ${{ env.NOMAD_RAM }}
       network:
         ports:
-          http: {}
+          http:
+            to: 5000
       services:
         - name: ${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-http
           port: http
