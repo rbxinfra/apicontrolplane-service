@@ -3,6 +3,7 @@
 	<PropertyGroup>
 		<Description>Service implementation for the API control plane service.</Description>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<Version>1.0.0</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
