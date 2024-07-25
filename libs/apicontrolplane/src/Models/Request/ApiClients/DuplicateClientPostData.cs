@@ -22,6 +22,5 @@ public class DuplicateClientPostData
     /// <summary>
     /// Gets or sets the note of the client
     /// </summary>
-    [Required]
     public string Note { get; set; }
 }
