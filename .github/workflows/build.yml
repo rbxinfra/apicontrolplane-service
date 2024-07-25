@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "services/**"
+      - "lib/**"
       - ".github/workflows/build.yml"
 
     branches:
