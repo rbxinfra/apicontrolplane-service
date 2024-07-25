@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Service implementation for API control plane.</Description>
+		<PackageReadmeFile>../README.md</PackageReadmeFile>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="Roblox.Api.ControlPlane" Version="1.1.3" />
+	  <PackageReference Include="Roblox.Operations" Version="1.1.3" />
+	</ItemGroup>
+
+</Project>
