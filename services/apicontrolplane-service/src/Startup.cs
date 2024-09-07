@@ -41,7 +41,6 @@ public class Startup : HttpStartupBase
 
         var serviceRegistrationFactory = new ServiceRegistrationFactory(
             serviceFactory,
-            apiClientFactory,
             operationFactory,
             serviceAuthorizationFactory,
             operationAuthorizationFactory
