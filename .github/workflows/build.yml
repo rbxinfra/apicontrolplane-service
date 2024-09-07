@@ -262,6 +262,8 @@ jobs:
         with:
           name: components
           path: ${{ steps.build-components.outputs.deploy-directory }}/*.zip
+          if-no-files-found: error
+          include-hidden-files: true
         
   # No need for checkout, downloads the component archives from the
   # artifacts of the build job
