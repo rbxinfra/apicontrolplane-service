@@ -16,7 +16,8 @@ build:
     image_name: docker.artifactory.rbx.com/micro-services-platform/apicontrolplane-service
     
 deployment:
-  count: 3
+  count: 2
+  namespace: micro-services
 
   job: ${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service
 
