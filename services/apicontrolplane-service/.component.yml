@@ -1,9 +1,5 @@
 component: apicontrolplane-service
 
-# This is only used by the build worklow,
-# it determines how the component is built
-# Docker only relevant when the argument
-# 
 build:
   project_file: src/Roblox.ApiControlPlane.Service.csproj
   component_directory: ./.deploy
@@ -21,8 +17,7 @@ deployment:
 
   job: ${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service
 
-  vault_policies:
-    - vault_secret_settings_providers_token_reader
+  vault_role: rbx-platform-token-reader
 
   # Passed to the meta section in Nomad
   meta:
@@ -38,33 +33,19 @@ deployment:
           http: 
             to: 5000
       services:
-        - name: ${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-http
+        - name: ${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service
           port: http
           tags:
             - ${{ env.NOMAD_ENVIRONMENT }}
+            - prometheus
             - Roblox.ApiControlPlane.Service
             - ApiControlPlane
-            - "traefik.enable=true"
-            - "traefik.http.routers.${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-http.rule=(Host(`apicontrolplane.service.simulprod.com`))"
-            - "traefik.http.routers.${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-http.entrypoints=http"
-            - "traefik.http.routers.${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-http.middlewares=local-network-only"
-            - "traefik.http.middlewares.local-network-only.ipwhitelist.sourcerange=10.128.0.0/16"
-          checks:
-            - type: http
-              path: /health
- 
-        - name: ${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-https
-          port: http
-          tags:
-            - ${{ env.NOMAD_ENVIRONMENT }}
-            - Roblox.ApiControlPlane.Service
-            - ApiControlPlane
-            - "traefik.enable=true"
-            - "traefik.http.routers.${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-https.rule=(Host(`apicontrolplane.service.simulprod.com`))"
-            - "traefik.http.routers.${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-https.entrypoints=https"
-            - "traefik.http.routers.${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-https.tls=true"
-            - "traefik.http.routers.${{ env.NOMAD_ENVIRONMENT }}-roblox-apicontrolplane-service-https.middlewares=local-network-only"
-            - "traefik.http.middlewares.local-network-only.ipwhitelist.sourcerange=10.128.0.0/16"
+
+            # Traffic: Private | Roblox.ApiControlPlane.Service
+            - haproxy.enable=true
+            - haproxy.protocol=http
+            - haproxy.fe.fqdn=apicontrolplane.api.rbxlabs.net
+            - haproxy.fe.entrypoints=http,https
           checks:
             - type: http
               path: /health
@@ -74,8 +55,10 @@ deployment:
           env: true
           on_change: restart
           data: |
-            ASPNETCORE_URLS="http://+:5000"
-            AppName=Roblox.ApiControlPlane.ApiControlPlaneService
             DEFAULT_LOG_LEVEL=Information
-            VAULT_ADDR="http://vault.service.consul:8200"
+            ASPNETCORE_URLS="http://+:5000"
+            
+            AppName=Roblox.ApiControlPlane.ApiControlPlaneService
+            
+            VAULT_ADDR="https://cou1-vault.simulprod.com"
             VAULT_TOKEN="{{ with secret "secret/teams/applications/vault-providers" }}{{ .Data.vault_token }}{{ end }}"

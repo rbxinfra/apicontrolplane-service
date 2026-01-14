@@ -41,14 +41,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate and Find components
-        uses: mfdlabs/component-finder-action@v8
+        uses: mfdlabs/component-finder-action@v10
         id: find-component-directories
         with:
           components: ${{ github.event.inputs.components }}
           component-search-directories: services
 
       - name: Components to Nomad Jobs
-        uses: mfdlabs/component-nomad-parser-action@v14
+        uses: mfdlabs/component-nomad-parser-action@v15
         id: components-to-nomad-jobs
         env:
           NOMAD_ENVIRONMENT: ${{ github.event.inputs.nomad_environment }}

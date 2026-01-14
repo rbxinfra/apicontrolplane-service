@@ -81,7 +81,7 @@ public class ImportServiceConfigurationOperation : IResultOperation<ImportServic
                       _ServiceFactory.CreateNew(input.ServiceName, true);
 
         var existingOperations = _OperationFactory.GetAllByService(service);
-        var operationsNeedingDeletion = existingOperations.Where(x => !input.Operations.Any(y => y == x.Name));
+        var operationsNeedingDeletion = existingOperations.Where(x => input.Operations.All(y => y != x.Name));
 
         foreach (var operation in operationsNeedingDeletion)
         {
@@ -128,10 +128,9 @@ public class ImportServiceConfigurationOperation : IResultOperation<ImportServic
                 {
                     // Doesn't mean invalid operation names.
                     var nonExistingOperations = apiClientModel.AuthorizedOperations.Where(
-                        x => !allOperationNames.Any(y => x == y)
-                    );
+                        x => allOperationNames.All(y => x != y)).ToArray();
 
-                    if (nonExistingOperations.Any())
+                    if (nonExistingOperations.Length != 0)
                     {
                         _Logger.Warning(
                             "Skipping API Client [{0}] because it contains authorized operations not defined in the configuration [{1}]", 
