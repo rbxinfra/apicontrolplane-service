@@ -17,6 +17,9 @@ internal class Settings : BaseSettingsProvider<Settings>, IServiceSettings, ISet
     /// <inheritdoc cref="IServiceSettings.LogLevel"/>
     public LogLevel LogLevel => GetOrDefault(nameof(ApiKey), LogLevel.Information);
 
+    /// <inheritdoc cref="IServiceSettings.VerboseErrorsEnabled"/>
+    public bool VerboseErrorsEnabled => GetOrDefault(nameof(VerboseErrorsEnabled), false);
+
     /// <inheritdoc cref="ISettings.RemoveServiceAuthorizationShouldDeleteOperationAuthorizations"/>
     public bool RemoveServiceAuthorizationShouldDeleteOperationAuthorizations => GetOrDefault(nameof(RemoveServiceAuthorizationShouldDeleteOperationAuthorizations), true);
 
