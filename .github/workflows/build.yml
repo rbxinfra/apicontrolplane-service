@@ -5,6 +5,7 @@ on:
     paths:
       - "services/**"
       - "libs/**"
+      - "protos/**"
       - ".github/workflows/build.yml"
 
     branches:
@@ -37,12 +38,34 @@ jobs:
             // component parts of commit messages do not close with !#, to find the end,
             // just read the unti a newline character is found
 
-            const headCommitMessage = `${{ github.event.head_commit.message }}`;
-            const components = headCommitMessage.match(/#!components: ([a-zA-Z0-9_\-.,]+)/);
-            const deployableComponents = headCommitMessage.match(/#!deployable-components: ([a-zA-Z0-9_\-.,]+)/);
+            function getComponentNames(commitMessage) {
+              const regex1 = /#!components: ([a-zA-Z0-9_\-., ]+)/g;
+              const regex2 = /#!components: ([a-zA-Z0-9_\-., ]+)/;
 
-            core.setOutput('components', components && components[1] || '');
-            core.setOutput('deployable-components', deployableComponents && deployableComponents[1] || '');
+              return commitMessage.match(regex1)?.map(x => x.match(regex2)[1].split(','))
+                .flat()
+                .map(x => x.trim())
+                .filter((x, i, a) => i === a.indexOf(x))
+                .join(',');
+            }
+
+            function getDeployableComponents(commitMessage) {
+              const regex1 = /#!deployable-components: ([a-zA-Z0-9_\-., ]+)/g;
+              const regex2 = /#!deployable-components: ([a-zA-Z0-9_\-., ]+)/;
+
+              return commitMessage.match(regex1)?.map(x => x.match(regex2)[1].split(','))
+                .flat()
+                .map(x => x.trim())
+                .filter((x, i, a) => i === a.indexOf(x))
+                .join(',');
+            }
+
+            const headCommitMessage = `${{ github.event.head_commit.message }}`;
+            const components = getComponentNames(headCommitMessage);
+            const deployableComponents = getDeployableComponents(headCommitMessage);
+
+            core.setOutput('components', components || '');
+            core.setOutput('deployable-components', deployableComponents || '');
 
   build:
     name: Build Components
@@ -74,13 +97,29 @@ jobs:
       - name: Download Needed Node Modules
         run: npm install yaml
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.x
+
+      - name: Add buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      # For protoc-gen-go-grpc and protoc-gen-go
+      - name: Install protoc plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
       - name: Validate and Find components
         uses: mfdlabs/component-finder-action@v10
         id: find-component-directories
         with:
           components: ${{ env.COMPONENT_NAMES }}
           component-search-directories: services
-          
+
       - name: Ensure Valid Components
         run: |
           if [ "${{ steps.find-component-directories.outputs.components }}" == "" ]; then
@@ -108,7 +147,6 @@ jobs:
         uses: actions/github-script@v7
         id: build-components
         env:
-          VERSION: ${{ steps.version.outputs.version }}
           NOMAD_VERSION: ${{ steps.version.outputs.version }}
         with:
           script: |
@@ -144,16 +182,39 @@ jobs:
                 return false;
               }
 
-              if (!config.build.project_file) {
-                core.error('Build project file is required');
+              if (!config.build.type) {
+                config.build.type = 'dotnet'; // Default to dotnet, go is the other type.
+              }
+            
+              if (config.build.type !== 'dotnet' && config.build.type !== 'go') {
+                core.error('Build type must be dotnet or go');
                 return false;
               }
 
-              config.build.project_file = path.resolve(path.dirname(configFileName), config.build.project_file);
+              if (config.build.type === 'dotnet') {
+                if (!config.build.project_file) {
+                  core.error('Build project file is required');
+                  return false;
+                }
 
-              if (!fs.existsSync(config.build.project_file)) {
-                core.error(`Project file ${config.build.project_file} does not exist`);
-                return false;
+                config.build.project_file = path.resolve(path.dirname(configFileName), config.build.project_file);
+
+                if (!fs.existsSync(config.build.project_file)) {
+                  core.error(`Project file ${config.build.project_file} does not exist`);
+                  return false;
+                }
+              } else {
+                if (!config.build.os) {
+                  config.build.os = 'linux';
+                }
+
+                if (!config.build.architecture) {
+                  config.build.architecture = 'x64';
+                }
+
+                if (!config.build.spec) {
+                  config.build.spec = 'OPS-GOSPEC-25-GRPCSRV-EXT';
+                }
               }
 
               if (!config.build.component_directory) {
@@ -222,26 +283,85 @@ jobs:
                 return;
               }
 
-              let restoreCommand = `dotnet restore -f --no-cache --ignore-failed-sources ${componentConfig.build.project_file}`;
-              let dotnetCommand = `dotnet publish ${componentConfig.build.project_file} -c ${{ env.BUILD_CONFIGURATION }} -o ${componentConfig.build.component_directory} --no-restore`;
+              if (componentConfig.build.type === 'dotnet') {
+                let restoreCommand = `dotnet restore -f --no-cache --ignore-failed-sources ${componentConfig.build.project_file}`;
+                let dotnetCommand = `dotnet publish ${componentConfig.build.project_file} -c ${{ env.BUILD_CONFIGURATION }} -o ${componentConfig.build.component_directory} --no-restore`;
 
-              if (componentConfig.build.additional_args) {
-                for (const arg of componentConfig.build.additional_args) {
-                  dotnetCommand += ` ${arg}`;
+                if (componentConfig.build.additional_args) {
+                  for (const arg of componentConfig.build.additional_args) {
+                    dotnetCommand += ` ${arg}`;
+                  }
                 }
-              }
 
-              try {
-                child_process.execSync(restoreCommand, { stdio: 'inherit' });
-                child_process.execSync(dotnetCommand, { stdio: 'inherit' });
-              } catch (error) {
-                core.setFailed(`Failed to build component ${component}`);
+                console.log(`Running restore command: ${restoreCommand}`);
+                console.log(`Running dotnet command: ${dotnetCommand}`);
 
-                 return;
+                try {
+                  child_process.execSync(restoreCommand, { stdio: 'inherit' });
+                  child_process.execSync(dotnetCommand, { stdio: 'inherit' });
+                } catch (error) {
+                  core.setFailed(`Failed to build component ${component}`);
+
+                  return;
+                }
+              } else {
+                // The project root (the directory where the .component.yaml file is located)
+                // by spec (OPS-GOSPEC-25) should contain a Makefile with the following targets:
+                // build-debug, build-release, test, tidy, vendor
+                // Extension spec (OPS-GOSPEC-25-GRPCSRV-EXT) will have 1 extra target:
+                // build-proto
+                // Go in the following order:
+                // build-proto, tidy, vendor, test, build-<conf>
+
+                const configuration = process.env.BUILD_CONFIGURATION.toLowerCase();
+                const makefile = path.resolve(path.dirname(configFileName), 'Makefile');
+                let makeCommand = '';
+
+                if (componentConfig.build.spec === 'OPS-GOSPEC-25-GRPCSRV-EXT') {
+                  makeCommand = `make build-proto tidy vendor test build-${configuration}`;
+                } else if (componentConfig.build.spec === 'OPS-GOSPEC-25') {
+                  makeCommand = `make tidy vendor test build-${configuration}`;
+                } else {
+                  makeCommand = `make build-${configuration}`;
+                }
+
+                if (componentConfig.build.additional_args) {
+                  for (const arg of componentConfig.build.additional_args) {
+                    makeCommand += ` ${arg}`;
+                  }
+                }
+
+                console.log(`Running make command: ${makeCommand}`);
+
+                try {
+                  child_process.execSync(makeCommand, { stdio: 'inherit', cwd: path.dirname(configFileName) });
+                } catch (error) {
+                  core.setFailed(`Failed to build component ${component}`);
+
+                  return;
+                }
+            
+                // Output format from make is:
+                // bin/<config>/<os>/<arch>/<component>
+                // We need to move the output to the component directory
+                const outputFileFromMake = path.resolve(path.dirname(configFileName), `bin/${configuration}/${componentConfig.build.os}/${componentConfig.build.architecture}/${name}`);
+                const outputFileToDeploy = path.resolve(componentConfig.build.component_directory, name);
+
+                // Copy the output file to the component directory
+                try {
+                  child_process.execSync(`mkdir -p ${componentConfig.build.component_directory}`, { stdio: 'inherit' });
+                  child_process.execSync(`cp ${outputFileFromMake} ${outputFileToDeploy}`, { stdio: 'inherit' });
+                } catch (error) {
+                  core.setFailed(`Failed to copy component ${component} to deploy directory`);
+
+                  return;
+                }
               }
 
               // Zip the component, and move it to the deploy directory
               const zipCommand = `zip -r ${path.resolve(deployDirectory, `${componentConfig.component}.zip`)} .`;
+
+              console.log(`Running zip command: ${zipCommand}`);
 
               try {
                 child_process.execSync(zipCommand, { stdio: 'inherit', cwd: componentConfig.build.component_directory });
@@ -262,7 +382,9 @@ jobs:
         with:
           name: components
           path: ${{ steps.build-components.outputs.deploy-directory }}/*.zip
-        
+          if-no-files-found: error
+          include-hidden-files: true
+  
   # No need for checkout, downloads the component archives from the
   # artifacts of the build job
   upload-artifacts:
@@ -329,7 +451,7 @@ jobs:
 
     if: ${{ !contains(github.event.head_commit.message, '#!skip-image!#') && needs.build.result == 'success' }}
 
-    needs: 
+    needs:
       - build
 
     runs-on: local
@@ -373,7 +495,7 @@ jobs:
             for (const [component, dockerFile] of Object.entries(dockerFiles)) {
               fs.writeFileSync(`${component}.dockerfile`, dockerFile);
             }
-      
+
       - name: Build Docker Images
         if: ${{ env.CREATE_IMAGE }}
         id: build-docker-images
@@ -443,7 +565,7 @@ jobs:
     
     if: ${{ !contains(github.event.head_commit.message, '#!skip-deploy!#') && github.ref == 'refs/heads/master' && needs.get-component-names.outputs.deployable-components != '' }}
 
-    needs: 
+    needs:
       - get-component-names
       - build-docker-images
 
@@ -464,13 +586,11 @@ jobs:
 
             let deployableComponentsMap = '';
 
-            for (const component of components.split(',')) {
-              let [name, version] = component.split(':');
-              
-              if (!version) version = 'latest';
-              
+            for (const component of deployableComponents.split(',')) {
+              const [name, version] = component.split(':');
+
               if (deployableComponents.includes(name)) {
-                deployableComponentsMap += `${component}:${version},`;
+                deployableComponentsMap += `${component},`;
               }
             }
 
@@ -480,10 +600,3 @@ jobs:
             };
 
             core.setOutput('action-inputs', JSON.stringify(actionInputs));
-
-      - name: Dispatch Deployment
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: deploy.yml
-          inputs: ${{ steps.get-deployable-components.outputs.action-inputs }}
-          token: ${{ secrets.DEPLOYER_TOKEN }}
