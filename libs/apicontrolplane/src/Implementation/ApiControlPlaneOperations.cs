@@ -2,6 +2,8 @@
 
 using System;
 
+using Microsoft.AspNetCore.Http;
+
 using EventLog;
 using Api.ControlPlane;
 
@@ -140,6 +142,8 @@ public class ApiControlPlaneOperations : IApiControlPlaneOperations
     /// </summary>
     /// <param name="logger">The <see cref="ILogger"/></param>
     /// <param name="settings">The <see cref="ISettings"/></param>
+    /// <param name="httpContextAccessor">The <see cref="IHttpContextAccessor"/></param>
+    /// <param name="authorizationFactory">The <see cref="IAuthorizationFactory"/></param>
     /// <param name="apiClientFactory">The <see cref="IApiClientFactory"/></param>
     /// <param name="serviceFactory">The <see cref="IServiceFactory"/></param>
     /// <param name="operationFactory">The <see cref="IOperationFactory"/></param>
@@ -149,6 +153,8 @@ public class ApiControlPlaneOperations : IApiControlPlaneOperations
     /// <exception cref="ArgumentNullException">
     /// - <paramref name="logger"/> cannot be null.
     /// - <paramref name="settings"/> cannot be null.
+    /// - <paramref name="httpContextAccessor"/> cannot be null.
+    /// - <paramref name="authorizationFactory"/> cannot be null.
     /// - <paramref name="apiClientFactory"/> cannot be null.
     /// - <paramref name="serviceFactory"/> cannot be null.
     /// - <paramref name="operationFactory"/> cannot be null.
@@ -159,6 +165,8 @@ public class ApiControlPlaneOperations : IApiControlPlaneOperations
     public ApiControlPlaneOperations(
         ILogger logger, 
         ISettings settings,
+        IHttpContextAccessor httpContextAccessor,
+        IAuthorizationFactory authorizationFactory,
         IApiClientFactory apiClientFactory,
         IServiceFactory serviceFactory,
         IOperationFactory operationFactory,
@@ -169,6 +177,8 @@ public class ApiControlPlaneOperations : IApiControlPlaneOperations
     {
         if (logger == null) throw new ArgumentNullException(nameof(logger));
         if (settings == null) throw new ArgumentNullException(nameof(settings));
+        if (httpContextAccessor == null) throw new ArgumentNullException(nameof(httpContextAccessor));
+        if (authorizationFactory == null) throw new ArgumentNullException(nameof(authorizationFactory));
         if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
         if (serviceFactory == null) throw new ArgumentNullException(nameof(serviceFactory));
         if (operationFactory == null) throw new ArgumentNullException(nameof(operationFactory));
@@ -199,7 +209,7 @@ public class ApiControlPlaneOperations : IApiControlPlaneOperations
         GetTotalNumberOfServicesOperation = new(logger, serviceFactory);
         RemoveServiceOperation = new(logger, serviceFactory, operationFactory, serviceAuthorizationFactory, operationAuthorizationFactory);
         UpdateServiceOperation = new(logger, serviceFactory);
-        GetServiceRegistrationOperation = new(logger, serviceRegistrationFactory);
+        GetServiceRegistrationOperation = new(logger, serviceRegistrationFactory, authorizationFactory, httpContextAccessor);
         ImportServiceConfigurationOperation = new(logger, settings, serviceFactory, operationFactory, apiClientFactory, serviceRegistrationFactory, serviceAuthorizationFactory, operationAuthorizationFactory);
 
         #endregion
@@ -224,15 +234,6 @@ public class ApiControlPlaneOperations : IApiControlPlaneOperations
         GetTotalNumberOfServiceAuthorizationsByClientOperation = new(logger, apiClientFactory, serviceAuthorizationFactory);
         GetTotalNumberOfServiceAuthorizationsByServiceOperation = new(logger, serviceFactory, serviceAuthorizationFactory);
 
-        #region ServiceAuthorizations
-
-        AddServiceAuthorizationOperation = new(logger, settings, serviceFactory, operationFactory, apiClientFactory, serviceAuthorizationFactory, operationAuthorizationFactory);
-        GetServiceAuthorizationsByClientPagedOperation = new(logger, apiClientFactory, serviceAuthorizationFactory);
-        GetServiceAuthorizationsByServicePagedOperation = new(logger, serviceFactory, serviceAuthorizationFactory);
-        GetTotalNumberOfServiceAuthorizationsByClientOperation = new(logger, apiClientFactory, serviceAuthorizationFactory);
-        GetTotalNumberOfServiceAuthorizationsByServiceOperation = new(logger, serviceFactory, serviceAuthorizationFactory);
-
-        #endregion
         #endregion
 
         #region OperationAuthorizations

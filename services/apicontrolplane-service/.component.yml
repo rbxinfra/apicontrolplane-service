@@ -44,7 +44,7 @@ deployment:
             # Traffic: Private | Roblox.ApiControlPlane.Service
             - haproxy.enable=true
             - haproxy.protocol=http
-            - haproxy.fe.fqdn=apicontrolplane.api.rbxlabs.net
+            - haproxy.fe.fqdn=apicontrolplane.api.rbxlabs.dev
             - haproxy.fe.entrypoints=http,https
           checks:
             - type: http
