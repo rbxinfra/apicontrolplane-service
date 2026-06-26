@@ -57,5 +57,12 @@ internal enum ApiControlPlaneErrors
     /// </summary>
     [HttpStatusCode(HttpStatusCode.Conflict)]
     [Description("The service '{0}' could not be found")]
-    UnknownOperation
+    UnknownOperation,
+
+    /// <summary>
+    /// The API client is not authorized to access the service registration.
+    /// </summary>
+    [HttpStatusCode(HttpStatusCode.Forbidden)]
+    [Description("The API client '{0}' is not authorized to access the service registration for service '{1}'")]
+    UnauthorizedServiceRegistrationAccess,
 }
