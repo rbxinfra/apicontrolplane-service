@@ -8,7 +8,8 @@ using Microsoft.AspNetCore.Http;
 using EventLog;
 using Operations;
 using Api.ControlPlane;
-using Service.ApiControlPlane;
+
+using Web.Framework.Services.Http;
 
 using Models;
 
@@ -53,7 +54,7 @@ public class GetServiceRegistrationOperation : IResultOperation<GetServiceRegist
     {
         if (string.IsNullOrEmpty(input.ServiceName)) return (null, new("{0} cannot be null or empty", nameof(input.ServiceName)));
 
-        var currentClient = _HttpContextAccessor.HttpContext?.Items["ApiClient"] as IApiClient;
+        var currentClient = _HttpContextAccessor.HttpContext?.GetCurrentApiClient();
 
         _Logger.Information("GetServiceRegistration, ServiceName = {0}", input.ServiceName);
 

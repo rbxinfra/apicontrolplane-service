@@ -8,7 +8,14 @@
 
 	<ItemGroup>
 		<PackageReference Include="Roblox.ApplicationContext" Version="1.2.4" />
-		<PackageReference Include="Roblox.Web.Framework.Services.Http" Version="1.3.0" />
+	</ItemGroup>
+
+	<ItemGroup Label="DebugLibs" Condition="'$(Configuration)' == 'Debug'">
+		<PackageReference Include="Roblox.Web.Framework.Services.Http" Version="1.3.3-dev" />
+	</ItemGroup>
+
+	<ItemGroup Label="ReleaseLibs" Condition="'$(Configuration)' == 'Release'">
+		<PackageReference Include="Roblox.Web.Framework.Services.Http" Version="1.3.3" />
 	</ItemGroup>
 
 	<ItemGroup>
